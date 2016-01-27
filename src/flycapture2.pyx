@@ -321,11 +321,16 @@ cdef class Context:
                 
 cdef class Image:
     cdef fc2Image img
+    cdef fc2Image img_out
 
     def __cinit__(self):
         cdef fc2Error r
         with nogil:
             r = fc2CreateImage(&self.img)
+        raise_error(r)
+
+        with nogil:
+            r = fc2CreateImage(&self.img_out)
         raise_error(r)
 
     def __dealloc__(self):
@@ -334,32 +339,65 @@ cdef class Image:
             r = fc2DestroyImage(&self.img)
         raise_error(r)
 
+        with nogil:
+            r = fc2DestroyImage(&self.img_out)
+        raise_error(r)
+
     def __array__(self):
         cdef np.ndarray r
         cdef np.npy_intp shape[2]
         cdef np.npy_intp stride[2]
         cdef np.dtype dtype
-        if self.img.format == PIXEL_FORMAT_MONO8:
+
+        # de-bayer RAW8 images
+        if self.img.format == PIXEL_FORMAT_RAW8:
+            fc2ConvertImageTo(PIXEL_FORMAT_RGB8, &self.img, &self.img_out)
             dtype = np.dtype("uint8")
+            stride[0] = self.img_out.stride
             stride[1] = 1
+            shape[0] = self.img_out.rows
+            shape[1] = self.img_out.cols * 3
+            Py_INCREF(dtype)
+            r = PyArray_NewFromDescr(np.ndarray, dtype,
+                    2, shape, stride,
+                    self.img_out.pData, np.NPY_DEFAULT, None)
+            r.base = <PyObject *>self
+            Py_INCREF(self)
+            # We deinterlace RGB8 images into shape(x,y,3)
+            # thre is likely much better notation for this
+            return np.array( ((r[:,0::3]), 
+                              (r[:,1::3]),
+                              (r[:,2::3])) )
+        elif self.img.format == PIXEL_FORMAT_MONO8:
+            dtype = np.dtype("uint8")
+            stride[0] = self.img.stride
+            stride[1] = 1
+            shape[0] = self.img.stride
+            shape[1] = self.img.cols
         elif self.img.format == PIXEL_FORMAT_MONO16:
-            dtype = np.dtype("uint16")
+            dtype = np.dtype("uint8")
+            stride[0] = self.img.stride
             stride[1] = 2
+            shape[0] = self.img.stride
+            shape[1] = self.img.cols
         else:
             dtype = np.dtype("uint8")
+            stride[0] = self.img.stride
             stride[1] = self.img.stride/self.img.cols
+            shape[0] = self.img.stride
+            shape[1] = self.img.cols
+
+
         Py_INCREF(dtype)
-        shape[0] = self.img.rows
-        shape[1] = self.img.cols
-        stride[0] = self.img.stride
-        #assert stride[0] == stride[1]*shape[1]
-        #assert shape[0]*shape[1]*stride[1] == self.img.dataSize
         r = PyArray_NewFromDescr(np.ndarray, dtype,
-                2, shape, stride,
-                self.img.pData, np.NPY_DEFAULT, None)
+               2, shape, stride,
+               self.img.pData, np.NPY_DEFAULT, None)
         r.base = <PyObject *>self
         Py_INCREF(self)
-        return r
+        return r 
+            
 
     def get_format(self):
         return self.img.format
+
+
