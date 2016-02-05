@@ -372,19 +372,19 @@ cdef class Image:
             dtype = np.dtype("uint8")
             stride[0] = self.img.stride
             stride[1] = 1
-            shape[0] = self.img.stride
+            shape[0] = self.img.rows
             shape[1] = self.img.cols
         elif self.img.format == PIXEL_FORMAT_MONO16:
             dtype = np.dtype("uint8")
             stride[0] = self.img.stride
             stride[1] = 2
-            shape[0] = self.img.stride
+            shape[0] = self.img.rows
             shape[1] = self.img.cols
         else:
             dtype = np.dtype("uint8")
             stride[0] = self.img.stride
             stride[1] = self.img.stride/self.img.cols
-            shape[0] = self.img.stride
+            shape[0] = self.img.rows
             shape[1] = self.img.cols
 
 
