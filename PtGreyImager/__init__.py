@@ -24,7 +24,8 @@ class PtgreyImager(object):
 
         # validates necessary for some reason? 
         m, f = self.ctx.get_video_mode_and_frame_rate()
-        p = self.ctx.get_property(fc2.FRAME_RATE)
+        p = self.ctx.get_property(fc2.AUTO_EXPOSURE)
+        p['auto_manual_mode'] = False
         self.ctx.set_property(**p)
 
         return
@@ -79,6 +80,7 @@ class PtgreyImager(object):
 
         p = self.ctx.get_property(fc2.SHUTTER)
         p['abs_value'] = ms
+        p['auto_manual_mode'] = False
         self.ctx.set_property(**p)
         return self.ctx.get_property(fc2.SHUTTER)['abs_value']
 
@@ -93,8 +95,24 @@ class PtgreyImager(object):
 
         p = self.ctx.get_property(fc2.GAIN)
         p['abs_value'] = db
+        p['auto_manual_mode'] = False
         self.ctx.set_property(**p)
         return self.ctx.get_property(fc2.GAIN)['abs_value']
+
+    def framerate(self, fps):
+        """
+        Set the camera framerate"
+        :param fps: Camera framerate in FPS, flat
+        :return:
+        """
+        if type(fps) is not float:
+            raise(TypeError, "Requires float")
+
+        p = self.ctx.get_property(fc2.FRAME_RATE)
+        p['abs_value'] = fps
+        p['auto_manual_mode'] = False
+        self.ctx.set_property(**p)
+        return self.ctx.get_property(fc2.FRAME_RATE)['abs_value']
 
 
 # example code, interactive with pyqtgraph output
